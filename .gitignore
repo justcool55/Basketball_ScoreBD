@@ -1,0 +1,12 @@
+# Buildozer 빌드 산출물/캐시
+.buildozer/
+bin/
+
+# 파이썬
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# OS
+.DS_Store
