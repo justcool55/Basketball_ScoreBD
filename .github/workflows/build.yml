@@ -61,6 +61,22 @@ jobs:
           key: buildozer-project-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-project-
 
+      # buildozer 1.5.0 의 accept_sdk_license 는 최신 build-tools(37)의
+      # 새 라이선스를 자동 동의하지 못해, build-tools 설치가 스킵되고
+      # 그 안의 aidl 을 못 찾아 빌드가 죽는다(Aidl not found).
+      # → sdkmanager 가 검사하는 licenses 폴더에 동의 해시를 미리 심어
+      #   "모든 라이선스 동의됨" 상태로 만들어 준다.
+      - name: Pre-accept Android SDK licenses
+        run: |
+          SDK_LIC="$HOME/.buildozer/android/platform/android-sdk/licenses"
+          mkdir -p "$SDK_LIC"
+          printf '\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$SDK_LIC/android-sdk-license"
+          printf '\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910' > "$SDK_LIC/android-sdk-preview-license"
+          printf '\n859f317696f67ef3d7f30a50a5560e7834b43903' > "$SDK_LIC/android-sdk-arm-dbt-license"
+          printf '\n601085b94cd77f0b54ff86406957099ebe79c4d6' > "$SDK_LIC/android-googletv-license"
+          printf '\n33b6a2b64607f11b759f320ef9dff4ae5c47d97a' > "$SDK_LIC/google-gdk-license"
+          echo "licenses 폴더 준비 완료:" && ls -1 "$SDK_LIC"
+
       - name: Build debug APK
         run: |
           buildozer android debug
