@@ -29,10 +29,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip autoconf libtool pkg-config \
+            git zip unzip \
+            autoconf automake libtool libtool-bin gettext m4 \
+            pkg-config \
             zlib1g-dev libncurses-dev \
             cmake libffi-dev libssl-dev \
             build-essential ccache
+          # 참고: automake 가 있어야 autoreconf 가 aclocal 로 libtool 매크로
+          # (LT_SYS_SYMBOL_USCORE 등)를 수집한다. 이게 없으면 libffi 레시피가
+          # "possibly undefined macro" 로 실패한다.
           sudo apt-get install -y libtinfo5 || sudo apt-get install -y libtinfo6 || true
 
       - name: Install Buildozer & Cython
