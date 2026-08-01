@@ -19,7 +19,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      # buildozer 는 JDK 17 을 쓴다.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -30,12 +29,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk \
-            autoconf libtool pkg-config \
+            git zip unzip autoconf libtool pkg-config \
             zlib1g-dev libncurses-dev \
             cmake libffi-dev libssl-dev \
             build-essential ccache
-          # libtinfo5 는 22.04 에만, 24.04 에는 libtinfo6. 없어도 빌드가 죽지 않게.
           sudo apt-get install -y libtinfo5 || sudo apt-get install -y libtinfo6 || true
 
       - name: Install Buildozer & Cython
@@ -43,30 +40,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install buildozer==1.5.0 cython==0.29.36
 
-      # 공식 액션으로 안드로이드 cmdline-tools 를 설치한다.
-      # 이걸로 "진짜" sdkmanager 를 얻어, 현재 유효한 모든 라이선스를 동의한다.
-      - name: Set up Android SDK & accept ALL licenses
+      # 공식 액션이 "현재 버전" 의 cmdline-tools / sdkmanager 를 설치한다.
+      # 이 sdkmanager 로 라이선스를 동의해야 build-tools 37 처럼 최신 패키지의
+      # 라이선스까지 제대로 수락된다 (buildozer 1.5.0 내장 sdkmanager 는 실패함).
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept every SDK license (real hashes)
+      - name: Accept ALL licenses (current sdkmanager)
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          echo "=== 동의된 라이선스 파일 목록 ===" && ls -1 "$ANDROID_SDK_ROOT/licenses"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          echo "=== 동의된 licenses ===" && ls -1 "$ANDROID_SDK_ROOT/licenses"
 
-      # buildozer 는 자기만의 SDK 를 ~/.buildozer 에 따로 받는다.
-      # 위에서 동의한 "실제" 라이선스 파일을 buildozer 의 SDK 경로에 복사해 두면,
-      # buildozer 가 build-tools(최신 37 포함)를 설치할 때 라이선스가 이미 동의된 상태가 된다.
-      # → run 1 의 "Aidl not found (build-tools license not accepted)" 를 근본 해결.
-      - name: Pre-seed buildozer SDK with accepted licenses
+      # 핵심: buildozer 가 자기 경로에서 위의 "라이선스 동의 완료" SDK 를
+      # 그대로 쓰도록 심볼릭 링크로 연결한다. 이러면 buildozer 와 공식 액션이
+      # 같은 licenses 폴더를 공유하므로 build-tools 37 설치가 더 이상 막히지 않는다.
+      # → run 1 / run 4 의 "Aidl not found (build-tools license not accepted)" 근본 해결.
+      - name: Point buildozer to the fully-licensed SDK
         run: |
-          DST="$HOME/.buildozer/android/platform/android-sdk/licenses"
-          mkdir -p "$DST"
-          cp -f "$ANDROID_SDK_ROOT/licenses/"* "$DST/" || true
-          echo "=== buildozer SDK 라이선스 심음 ===" && ls -1 "$DST"
+          mkdir -p "$HOME/.buildozer/android/platform"
+          ln -sfn "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
+          echo "=== 링크 확인 ===" && ls -ld "$HOME/.buildozer/android/platform/android-sdk"
 
       - name: Build debug APK
         run: |
-          buildozer android debug
+          set -o pipefail
+          buildozer android debug 2>&1 | tee buildozer_build.log
+
+      # 실패하든 성공하든 전체 빌드 로그를 파일로 남겨, 다음 진단 때
+      # 로그를 일일이 복사하지 않고 이 artifact 하나만 받으면 되게 한다.
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildozer-log
+          path: buildozer_build.log
+          if-no-files-found: ignore
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
