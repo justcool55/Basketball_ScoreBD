@@ -40,40 +40,44 @@ jobs:
           python -m pip install --upgrade pip
           pip install buildozer==1.5.0 cython==0.29.36
 
-      # 공식 액션이 "현재 버전" 의 cmdline-tools / sdkmanager 를 설치한다.
-      # 이 sdkmanager 로 라이선스를 동의해야 build-tools 37 처럼 최신 패키지의
-      # 라이선스까지 제대로 수락된다 (buildozer 1.5.0 내장 sdkmanager 는 실패함).
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept ALL licenses (current sdkmanager)
-        run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          echo "=== 동의된 licenses ===" && ls -1 "$ANDROID_SDK_ROOT/licenses"
-
-      # 핵심: buildozer 가 자기 경로에서 위의 "라이선스 동의 완료" SDK 를
-      # 그대로 쓰도록 심볼릭 링크로 연결한다. 이러면 buildozer 와 공식 액션이
-      # 같은 licenses 폴더를 공유하므로 build-tools 37 설치가 더 이상 막히지 않는다.
-      # → run 1 / run 4 의 "Aidl not found (build-tools license not accepted)" 근본 해결.
-      - name: Point buildozer to the fully-licensed SDK
-        run: |
-          mkdir -p "$HOME/.buildozer/android/platform"
-          ln -sfn "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
-          echo "=== 링크 확인 ===" && ls -ld "$HOME/.buildozer/android/platform/android-sdk"
-
+      # buildozer 가 "자기" SDK(최신 cmdline-tools) 를 직접 관리하게 둔다.
+      # 이 sdkmanager 는 JDK 17 에서 정상 동작한다(run 1 에서 확인).
+      # 유일하게 남은 문제는 build-tools 최신판 라이선스 자동동의 실패이므로,
+      # buildozer 가 받아온 그 sdkmanager 로 "모든 라이선스"를 우리가 직접 동의시킨 뒤
+      # 다시 빌드한다(2-패스).
       - name: Build debug APK
         run: |
+          set +e
+          echo "===== 1차: buildozer가 cmdline-tools를 내려받게 한다 (build-tools 라이선스에서 실패해도 OK) ====="
+          buildozer android debug 2>&1 | tee pass1.log
+
+          SDK="$HOME/.buildozer/android/platform/android-sdk"
+          # buildozer가 받은 "최신" sdkmanager 를 찾는다 (구버전 tools/bin 은 JDK17에서 깨지므로 제외)
+          SDKMANAGER=$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          echo "찾은 sdkmanager: $SDKMANAGER"
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::cmdline-tools sdkmanager 를 찾지 못했습니다. pass1.log 확인 필요."
+            exit 1
+          fi
+
+          echo "===== 모든 SDK 라이선스 동의 ====="
+          yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true
+          echo "동의된 licenses:" && ls -1 "$SDK/licenses" 2>/dev/null || true
+
+          echo "===== 2차: 실제 빌드 (이제 build-tools 설치 가능) ====="
           set -o pipefail
           buildozer android debug 2>&1 | tee buildozer_build.log
 
-      # 실패하든 성공하든 전체 빌드 로그를 파일로 남겨, 다음 진단 때
-      # 로그를 일일이 복사하지 않고 이 artifact 하나만 받으면 되게 한다.
+      # 실패하든 성공하든 전체 빌드 로그를 파일로 남긴다.
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: buildozer-log
-          path: buildozer_build.log
+          path: |
+            pass1.log
+            buildozer_build.log
           if-no-files-found: ignore
 
       - name: Upload APK artifact
