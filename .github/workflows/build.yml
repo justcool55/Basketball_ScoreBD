@@ -19,32 +19,47 @@ jobs:
         with:
           python-version: '3.11'
 
+      # buildozer 는 JDK 17 을 쓴다. 러너 기본 JDK 버전에 휘둘리지 않도록 고정.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
+          # 우분투 22.04 / 24.04 어디서든 되도록 필수 패키지만 먼저 설치한다.
           sudo apt-get install -y \
             git zip unzip openjdk-17-jdk \
             autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev \
+            zlib1g-dev libncurses-dev \
+            cmake libffi-dev libssl-dev \
             build-essential ccache
+          # libtinfo5 는 22.04 에만 있고 24.04 에는 없다(libtinfo6).
+          # 없는 쪽에서 빌드 전체가 죽지 않도록 실패를 무시한다.
+          sudo apt-get install -y libtinfo5 || sudo apt-get install -y libtinfo6 || true
 
       - name: Install Buildozer & Cython
         run: |
           python -m pip install --upgrade pip
           pip install buildozer==1.5.0 cython==0.29.36
 
+      # restore-keys 가 있어야 buildozer.spec 을 고쳐도 SDK/NDK 를 다시
+      # 내려받지 않는다 (없으면 매번 30분+ 재다운로드).
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
           key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-global-
 
       - name: Cache Buildozer project directory
         uses: actions/cache@v4
         with:
           path: .buildozer
           key: buildozer-project-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-project-
 
       - name: Build debug APK
         run: |

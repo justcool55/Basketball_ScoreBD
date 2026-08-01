@@ -15,6 +15,16 @@ source.dir = .
 # (list) 앱에 포함할 파일 확장자 (이미지/소리 리소스 포함)
 source.include_exts = py,png,jpg,jpeg,gif,bmp,kv,atlas,mp3,wav,ogg
 
+# (list) APK 에 넣지 않을 폴더
+#   venv: 가상환경(수천 개 .py) / BasketBall_ScoreBoard: 예전 버전 사본
+#   이걸 빼지 않으면 APK 가 수십 MB 로 불어난다.
+source.exclude_dirs = venv, .venv, .buildozer, bin, _git_trash, .github, .vscode, __pycache__, BasketBall_ScoreBoard
+
+# (list) APK 에 넣지 않을 파일
+#   Buzzer.mp3: 10분짜리 6.9MB 구버전 부저 (NBA_Buzzer.wav 로 대체됨)
+#   generated-image.png: 아이콘/스플래시로만 쓰이므로 소스에 중복 포함할 필요 없음
+source.exclude_patterns = Buzzer.mp3, generated-image.png, ScoreBoard_Image.bmp, main_v1.py, BBall_SB_v1.py
+
 # (str) 앱 버전
 version = 2.0
 
@@ -29,11 +39,11 @@ orientation = landscape
 # (bool) 전체화면 여부 (1 = 전체화면)
 fullscreen = 1
 
-# (str) 프리스플래시 이미지 (원하면 주석 해제)
-#presplash.filename = %(source.dir)s/generated-image.png
+# (str) 앱 실행 시 뜨는 스플래시 이미지
+presplash.filename = %(source.dir)s/generated-image.png
 
-# (str) 앱 아이콘 (원하면 주석 해제, 512x512 png 권장)
-#icon.filename = %(source.dir)s/GBC_Image.png
+# (str) 앱 아이콘 (512x512 GBC 로고)
+icon.filename = %(source.dir)s/GBC_Icon.png
 
 # (list) 지원 아키텍처
 android.archs = arm64-v8a, armeabi-v7a

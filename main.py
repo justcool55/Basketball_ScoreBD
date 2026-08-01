@@ -242,6 +242,7 @@ class ScoreboardApp(App):
         self.timer_event = None
         self.buzzer_sound = None
         self.buzzer_path = None
+        self._buzzer_fired = False  # 00.0초에서 부저가 반복 재생되지 않도록
 
         # 기본 파일 로드
         self.load_default_buzzer()
@@ -291,6 +292,8 @@ class ScoreboardApp(App):
     # ===== 게임 타이머 (음성 카운트다운 제거됨) =====
     def start_timer(self, *_):
         if not self.timer_running:
+            if self.timer_seconds > 0:
+                self._buzzer_fired = False
             self.timer_running = True
             self.timer_event = Clock.schedule_interval(self._tick_timer, 0.1)
 
@@ -316,11 +319,13 @@ class ScoreboardApp(App):
     def reset_timer(self, *_):
         #self.pause_timer()
         self.timer_seconds = 600.0
+        self._buzzer_fired = False
         self._render_timer()
 
     def set_timer(self, seconds):
         #self.pause_timer()
         self.timer_seconds = float(seconds)
+        self._buzzer_fired = False
         self._render_timer()
 
     def _tick_timer(self, dt):
@@ -331,7 +336,10 @@ class ScoreboardApp(App):
             self.timer_seconds = 0.0
             #self.pause_timer()
             self._render_timer()
-            self.play_buzzer()
+            # 00.0 이 된 순간 딱 한 번만 부저를 울린다 (0.1초마다 재생되던 문제 수정)
+            if not self._buzzer_fired:
+                self._buzzer_fired = True
+                self.play_buzzer()
 
     def _render_timer(self):
         """2분 남음 알림 제거됨"""
@@ -350,12 +358,17 @@ class ScoreboardApp(App):
     def load_default_buzzer(self):
         # 기존 코드는 'for path in Buzzer_PATH:' 로 경로 문자열을 한 글자씩
         # 순회하는 버그가 있어 부저가 로드되지 않았음. 파일을 직접 로드하도록 수정.
-        buzzer_path = resource_path("Buzzer.mp3")
-        if os.path.exists(buzzer_path):
-            self.buzzer_sound = SoundLoader.load(buzzer_path)
-            self.buzzer_path = buzzer_path
-            #name = os.path.basename(buzzer_path)
-            #self.buzzer_btn.text = name if len(name) <= 10 else (name[:7] + '...')
+        # NBA 아레나식 경기종료 혼을 우선 사용하고, 없으면 기존 Buzzer.mp3 로 폴백한다.
+        for filename in ("NBA_Buzzer.wav", "Buzzer.mp3"):
+            buzzer_path = resource_path(filename)
+            if not os.path.exists(buzzer_path):
+                continue
+            snd = SoundLoader.load(buzzer_path)
+            if snd:
+                snd.volume = 1.0
+                self.buzzer_sound = snd
+                self.buzzer_path = buzzer_path
+                break
 
     def select_buzzer_file(self, *_):
         content = BoxLayout(orientation='vertical', spacing=10)
@@ -411,6 +424,9 @@ class ScoreboardApp(App):
     '''
     def play_buzzer(self):
         if self.buzzer_sound:
+            # 이미 재생 중이면 처음부터 다시 울리도록 정지 후 재생
+            if self.buzzer_sound.state == 'play':
+                self.buzzer_sound.stop()
             self.buzzer_sound.play()
         else:
             # 안드로이드에서 진동 지원

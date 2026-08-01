@@ -10,3 +10,6 @@ venv/
 
 # OS
 .DS_Store
+
+# git 작업 중 남은 찌꺼기 폴더
+_git_trash/
