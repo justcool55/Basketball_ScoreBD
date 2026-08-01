@@ -8,7 +8,10 @@ on:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
+    # ubuntu-latest(현재 24.04)는 libtool 2.4.7 조합에서 libffi 의 autoreconf 가
+    # "LT_SYS_SYMBOL_USCORE" 매크로를 못 찾아 실패한다. 22.04(libtool 2.4.6)는
+    # buildozer CI 의 사실상 표준이며 이 툴체인 문제가 없다.
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
