@@ -33,6 +33,12 @@ version = 2.0
 #   - pyjnius: 안드로이드 진동(Vibrator) 등 자바 API 호출에 필요
 requirements = python3,kivy,pyjnius
 
+# (str) python-for-android 을 "안정 릴리스" 로 고정한다.
+#   고정하지 않으면 buildozer 가 p4a master(개발판)를 받아, Python 3.14 등
+#   최신 조합을 쓰다가 libffi(autoreconf) 등에서 깨진다.
+#   v2024.01.21 은 buildozer 1.5.0 / NDK 25b / Python 3.11 과 검증된 조합.
+p4a.branch = v2024.01.21
+
 # (str) 화면 방향 (landscape = 가로)
 orientation = landscape
 
