@@ -147,6 +147,13 @@ class ScoreboardApp(App):
         # 중앙 (타이머 + 중앙 로고)
         center = BoxLayout(orientation='vertical', spacing=10)
 
+        # 점수 초기화 버튼 (쿼터 표시 위 중앙) - 양팀 점수를 0으로
+        self.score_reset_btn = Button(
+            text='Score Reset', background_color=(0.2, 0.2, 0.6, 1),
+            size_hint_y=0.12
+        )
+        self.score_reset_btn.bind(on_press=self.reset_scores)
+
         self.q_label = Label(
             text='1Q', color=(1, 1, 1, 1), font_size='40sp', size_hint_y=0.15
         )
@@ -185,6 +192,7 @@ class ScoreboardApp(App):
         timer_set_btns.add_widget(set_5min)
         timer_set_btns.add_widget(set_1min)
 
+        center.add_widget(self.score_reset_btn)
         center.add_widget(self.q_label)
         center.add_widget(self.center_logo)
         #center.add_widget(center_logo_btn)
@@ -265,6 +273,13 @@ class ScoreboardApp(App):
         self._autofont(self.team2_name, 0.55)
         self._autofont(self.q_label, 0.6)
 
+        # 상단 컨트롤 버튼/스피너: 글자가 버튼보다 커서 겹치던 문제 수정.
+        # 세로는 버튼 높이의 0.4, 가로는 글자 수를 넉넉히 고려(char_w=0.8)해
+        # 버튼 폭 안에 들어오게 한다.
+        for _btn in (self.switch_btn, self.start_btn, self.pause_btn,
+                     self.reset_btn, self.quarter_spinner, self.score_reset_btn):
+            self._autofont(_btn, 0.4, char_w=0.8)
+
         return main
 
     def _autofont(self, label, hfactor, char_w=0.62):
@@ -317,6 +332,13 @@ class ScoreboardApp(App):
         else:
             self.team2_score = max(0, self.team2_score + delta)
             self.team2_score_lbl.text = str(self.team2_score)
+
+    def reset_scores(self, *_):
+        """양팀 점수를 0으로 초기화한다 (Score Reset 버튼)."""
+        self.team1_score = 0
+        self.team2_score = 0
+        self.team1_score_lbl.text = '0'
+        self.team2_score_lbl.text = '0'
 
     # ===== 게임 타이머 (음성 카운트다운 제거됨) =====
     def start_timer(self, *_):
