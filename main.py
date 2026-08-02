@@ -8,6 +8,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.utils import platform
 from kivy.core.audio import SoundLoader
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
@@ -28,8 +29,10 @@ def resource_path(filename):
 class ScoreboardApp(App):
     
     def build(self):
-        # 16:9 비율 설정 (안드로이드 최적화)
-        Window.size = (1280, 720)
+        # 안드로이드/iOS 에서는 창 크기를 강제하지 않고 폰의 실제 해상도를 그대로 쓴다.
+        # (데스크톱에서 테스트할 때만 16:9 창을 띄운다.)
+        if platform not in ('android', 'ios'):
+            Window.size = (1280, 720)
         Window.clearcolor = (0, 0, 0, 1)  # 검은색 배경
         SCRIPT_DIR = Path(__file__).resolve().parent
         main = BoxLayout(orientation='vertical', padding=10, spacing=8)
@@ -252,7 +255,33 @@ class ScoreboardApp(App):
         self.team2_input.bind(text=self._on_team2_name)
         self.quarter_spinner.bind(text=lambda _, v: self.q_label.setter('text')(self.q_label, v))
 
+        # ===== 글자 크기 자동 맞춤 =====
+        # 고정 font_size(예: 350sp) 대신, 위젯 크기에 비례해 글자 크기를 계산하도록
+        # 바인딩한다. 이러면 폰 해상도가 무엇이든 점수/타이머/팀명이 화면을 넘지 않는다.
+        self._autofont(self.team1_score_lbl, 0.85)
+        self._autofont(self.team2_score_lbl, 0.85)
+        self._autofont(self.timer_lbl, 0.85)
+        self._autofont(self.team1_name, 0.55)
+        self._autofont(self.team2_name, 0.55)
+        self._autofont(self.q_label, 0.6)
+
         return main
+
+    def _autofont(self, label, hfactor, char_w=0.62):
+        """label 의 글자 크기를 위젯 크기에 맞춰 자동 계산해준다.
+        - 세로: 위젯 높이 * hfactor
+        - 가로: 글자 수를 고려해 폭을 넘지 않도록 제한
+        둘 중 작은 값을 써서 어떤 해상도에서도 텍스트가 잘리거나 넘치지 않게 한다.
+        """
+        def _upd(inst, *_):
+            w, h = inst.size
+            if w <= 0 or h <= 0:
+                return
+            n = max(len(inst.text), 1)
+            fs = min(h * hfactor, w / (char_w * n))
+            inst.font_size = max(8, fs)
+        label.bind(size=_upd, text=_upd)
+        _upd(label)
 
     
     # ===== 파일 경로 설정 (여기서 수정 가능) =====
