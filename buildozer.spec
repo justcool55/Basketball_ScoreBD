@@ -26,7 +26,7 @@ source.exclude_dirs = venv, .venv, .buildozer, bin, _git_trash, .github, .vscode
 source.exclude_patterns = Buzzer.mp3, generated-image.png, ScoreBoard_Image.bmp, main_v1.py, BBall_SB_v1.py
 
 # (str) 앱 버전
-version = 2.2
+version = 2.3
 
 # (list) 앱이 필요로 하는 파이썬 패키지
 #   - kivy: UI 프레임워크

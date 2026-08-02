@@ -55,7 +55,9 @@ class ScoreboardApp(App):
         )
 
         # --- build() in top control bar ---
-        self.switch_btn = Button(text='SWITCH', background_color=(0.5,0.5,0.5,1))
+        # SWITCH 는 가로 폭을 좁게 (size_hint_x 작게)
+        self.switch_btn = Button(text='SWITCH', background_color=(0.5,0.5,0.5,1),
+                                 size_hint_x=0.2)
         self.switch_btn.bind(on_press=lambda *_: self.swap_teams())
         top.add_widget(self.switch_btn)
         
@@ -67,11 +69,11 @@ class ScoreboardApp(App):
         # 쿼터 선택
         self.quarter_spinner = Spinner(
             text='1Q', values=('1Q', '2Q', '3Q', '4Q', 'OT'),
-            size_hint_x=0.12, background_color=(0.25, 0.25, 0.25, 1)
+            size_hint_x=0.15, background_color=(0.25, 0.25, 0.25, 1)
         )
 
-        # 게임 타이머 컨트롤 (Save BMP 제거됨)
-        timer_ctrl = BoxLayout(orientation='horizontal', size_hint_x=0.5, spacing=10)
+        # 게임 타이머 컨트롤 (Save BMP 제거됨) - 남는 폭을 넉넉히 차지
+        timer_ctrl = BoxLayout(orientation='horizontal', size_hint_x=0.65, spacing=10)
         self.start_btn = Button(text='START', background_color=(0, 0.6, 0, 1))
         self.pause_btn = Button(text='PAUSE', background_color=(0.6, 0.6, 0, 1))
         #self.restart_btn = Button(text='RESTART', background_color=(0, 0.4, 0.6, 1))
@@ -87,7 +89,7 @@ class ScoreboardApp(App):
         for b in (self.start_btn, self.pause_btn, self.reset_btn):
             timer_ctrl.add_widget(b)
 
-        top.add_widget(team_box)
+        # team_box 는 비어 있어(팀명 입력 미사용) 상단에 넣지 않는다 → 빈 공간 제거
         top.add_widget(self.quarter_spinner)
         top.add_widget(timer_ctrl)
         main.add_widget(top)
@@ -147,15 +149,17 @@ class ScoreboardApp(App):
         # 중앙 (타이머 + 중앙 로고)
         center = BoxLayout(orientation='vertical', spacing=10)
 
-        # 점수 초기화 버튼 (쿼터 표시 위 중앙) - 양팀 점수를 0으로
+        # 점수 초기화 버튼 (쿼터 표시 위 중앙) - 양팀 점수를 0으로.
+        # 높이는 아래에서 상단 SWITCH 버튼과 동일하게 바인딩한다.
         self.score_reset_btn = Button(
             text='Score Reset', background_color=(0.2, 0.2, 0.6, 1),
-            size_hint_y=0.12
+            size_hint_y=None
         )
         self.score_reset_btn.bind(on_press=self.reset_scores)
 
+        # 쿼터 표시 - 폰트를 키운다 (size_hint_y 확대 + autofont hfactor 상향)
         self.q_label = Label(
-            text='1Q', color=(1, 1, 1, 1), font_size='40sp', size_hint_y=0.15
+            text='1Q', color=(1, 1, 1, 1), font_size='40sp', size_hint_y=0.22
         )
 
         # 중앙 전광판 이미지
@@ -271,14 +275,19 @@ class ScoreboardApp(App):
         self._autofont(self.timer_lbl, 0.85)
         self._autofont(self.team1_name, 0.55)
         self._autofont(self.team2_name, 0.55)
-        self._autofont(self.q_label, 0.6)
+        self._autofont(self.q_label, 0.9)   # 쿼터 표시 폰트 크게
 
         # 상단 컨트롤 버튼/스피너: 글자가 버튼보다 커서 겹치던 문제 수정.
         # 세로는 버튼 높이의 0.4, 가로는 글자 수를 넉넉히 고려(char_w=0.8)해
-        # 버튼 폭 안에 들어오게 한다.
+        # 버튼 폭 안에 들어오게 한다. Score Reset 도 같은 규칙 → 폰트가 상단과 동일해짐.
         for _btn in (self.switch_btn, self.start_btn, self.pause_btn,
                      self.reset_btn, self.quarter_spinner, self.score_reset_btn):
             self._autofont(_btn, 0.4, char_w=0.8)
+
+        # Score Reset 버튼 높이를 상단 SWITCH 버튼과 정확히 동일하게 맞춘다.
+        self.switch_btn.bind(
+            height=lambda _inst, h: setattr(self.score_reset_btn, 'height', h))
+        self.score_reset_btn.height = self.switch_btn.height
 
         return main
 
